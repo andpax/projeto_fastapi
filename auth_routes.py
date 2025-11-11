@@ -17,7 +17,7 @@ auth_router = APIRouter(prefix='/auth', tags=['auth'])
 # ================================================
 # 📍 Rota GET - Rota padrão de autenticação
 # ================================================
-@auth_router.get('/')
+@auth_router.get('/') 
 async def home():
     '''
     Essa é a rota padrão de autenticação do nosso sistema.
