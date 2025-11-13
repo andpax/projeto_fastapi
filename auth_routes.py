@@ -101,19 +101,6 @@ async def criar_conta(usuario_schema: UsuarioSchema, session: Session = Depends(
         # Retorna uma mensagem de sucesso com o e-mail do usuário criado.
         return {'mensagem': f'Usuário cadastrado com sucesso: {usuario_schema.email}'}
 
-
-@auth_router.post('/login')
-async def login(login_schema: LoginSchema, session: Session = Depends(pegar_sessao)):
-    usuario = session.query(Usuario).filter(UsuarioSchema.email == login_schema).first()
-
-    if not usuario:
-        raise HTTPException(status_code=400, detail='Usuário não encontrado')
-    else:
-        access_token = criar_token(usuario.id)
-        return {
-            'access_token': access_token,
-            'token_type': 'Bearer'
-        }
     
 # ===============================================
 # 🔐 ROTA POST — Login de usuário
