@@ -12,7 +12,8 @@ from dependencies import pegar_sessao
 from main import bcrypt_context
 
 # Importa o schema de validação 'UsuarioSchema', que define como os dados do usuário devem ser recebidos e validados.
-from schemas import UsuarioSchema
+# Importa o schema de validação 'LoginSchema', que define como os dados do login devem ser recebidos e validados.
+from schemas import UsuarioSchema, LoginSchema
 
 # Importa o tipo 'Session' do SQLAlchemy, usado para digitar a dependência do banco.
 from sqlalchemy.orm import Session
@@ -21,6 +22,10 @@ from sqlalchemy.orm import Session
 # Cria um roteador específico para autenticação.
 # Todas as rotas desse módulo terão o prefixo '/auth' e serão agrupadas sob a tag 'auth' na documentação do FastAPI.
 auth_router = APIRouter(prefix='/auth', tags=['auth'])
+
+def criar_token(id_usuario):
+    token = f'fue8350je373$.{id_usuario}'
+    return token
 
 
 @auth_router.get('/')
@@ -95,3 +100,57 @@ async def criar_conta(usuario_schema: UsuarioSchema, session: Session = Depends(
 
         # Retorna uma mensagem de sucesso com o e-mail do usuário criado.
         return {'mensagem': f'Usuário cadastrado com sucesso: {usuario_schema.email}'}
+
+
+@auth_router.post('/login')
+async def login(login_schema: LoginSchema, session: Session = Depends(pegar_sessao)):
+    usuario = session.query(Usuario).filter(UsuarioSchema.email == login_schema).first()
+
+    if not usuario:
+        raise HTTPException(status_code=400, detail='Usuário não encontrado')
+    else:
+        access_token = criar_token(usuario.id)
+        return {
+            'access_token': access_token,
+            'token_type': 'Bearer'
+        }
+    
+# ===============================================
+# 🔐 ROTA POST — Login de usuário
+# ===============================================
+@auth_router.post('/login')
+async def login(login_schema: LoginSchema, session: Session = Depends(pegar_sessao)):
+    '''
+    Realiza o login de um usuário autenticando suas credenciais.
+
+    Parâmetros (via corpo da requisição):
+    - email: e-mail cadastrado do usuário.
+    - senha: senha em texto puro (que será comparada com a senha criptografada do banco).
+
+    O retorno é um token de acesso (JWT, por exemplo), que será usado para autenticação nas demais rotas.
+    '''
+
+    # Busca o usuário no banco de dados com base no e-mail informado.
+    usuario = session.query(Usuario).filter(UsuarioSchema.email == login_schema).first()
+
+    # Se o usuário não existir, lança um erro 400 (Bad Request).
+    if not usuario:
+        raise HTTPException(status_code=400, detail='Usuário não encontrado')
+
+    # Verifica se a senha informada confere com a senha armazenada (criptografada).
+    senha_valida = bcrypt_context.verify(login_schema.senha, usuario.senha)
+
+    # Caso a senha esteja incorreta, retorna erro 401 (não autorizado).
+    if not senha_valida:
+        raise HTTPException(status_code=401, detail='Senha incorreta')
+
+    # Caso o login seja bem-sucedido, gera um token de acesso.
+    # OBS: A função "criar_token" deve ser implementada em um módulo de utilitários
+    # (ex: utils/security.py) e retornar um JWT contendo o ID do usuário.
+    access_token = criar_token(usuario.id)
+
+    # Retorna o token e o tipo do token (padrão Bearer).
+    return {
+        'access_token': access_token,
+        'token_type': 'Bearer'
+    }
